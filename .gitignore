@@ -25,3 +25,5 @@ raw_responses/
 
 # Output directories
 output/
+
+*.zip
