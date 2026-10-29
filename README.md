@@ -1,110 +1,105 @@
 # IRIS-WSG-SN: Saxony Drinking Water Protection Ingestion Pipeline
 
-A production-grade Python data ingestion and spatial screening module for Saxony (LfULG) drinking water protection zones (*Wasserschutzgebiete* / WSG).
+Python data ingestion and spatial screening module for Saxony (LfULG) drinking water protection zones (*Wasserschutzgebiete* / WSG).
 
 ---
 
-## 1. Important Limitations & Project Assumptions
+## 1. Limitations & Assumptions
 
-> [!WARNING]
-> **Live WFS Unreachable**: Direct connection attempts to the official Saxony WFS (`https://geoportal.sachsen.de/wfs/wasserschutz`, layer `sn_wsg_bestand`) timed out during the TLS handshake (`Connection timed out after 10010ms` / `_ssl.c:1011: The handshake operation timed out`) due to network/firewall geo-restrictions.
+### Live WFS Service Connectivity
+Attempts to connect directly to the official Saxony WFS endpoint (`https://geoportal.sachsen.de/wfs/wasserschutz`, layer `sn_wsg_bestand`) timed out during the SSL/TLS handshake:
+```text
+Connection timed out after 10010ms (_ssl.c:1011: The handshake operation timed out)
+```
+This is likely caused by state network geo-restrictions or IP filtering on their portal gateway. Because a timeout occured when testing the handshake, I implemented this as an offline fixture demonstrator as permitted in the candidate notes of the assignment.
 
-- **Fixture-Based Demonstrator**: As explicitly permitted in the assignment specification, this pipeline implements the complete ingestion, normalization, PostGIS storage, and parcel screening flow using offline hand-made fixtures.
-- **Assumed Schema**: Source field names (`wsg_id`, `schutzzone`, etc.) are **ASSUMED** based on typical German environmental authority WFS specifications. All attribute names and zone lookup mappings are unverified against live Saxony data.
-- **Config-Driven Architecture**: Schema mapping is strictly isolated in [`config/wsg_config.json`](file:///c:/Users/yonat/Documents/@Projects/IRIS%20Project%20Application/config/wsg_config.json). The pipeline never hardcodes schema names. If input data differs from the configuration, it stops with a descriptive error listing the columns actually present.
-- **Unpublished Legal Fields**: Restriction categories and extraction rates are not assumed or guessed from general German water law; they default explicitly to `'not_published'`.
+### Schema Assumptions
+- Field names (`wsg_id`, `schutzzone`) are assumed based on standard German environmental WFS patterns.
+- All schema configurations are isolated in `config/wsg_config.json`. The pipeline never hardcodes column names in python code; if the live service returns different attributes, they only need to be adjusted in the config.
+- Restriction categories and extraction rates are not assumed or filled in from German water law; they default explicitly to `not_published`.
 
 ---
 
-## 2. Pipeline Architecture & Workflow
+## 2. Pipeline Overview
 
 ```
-[ Raw WFS / Fixture GeoJSON ]
-             │
-             ▼
-  [ Schema Validation ] ────── (Missing required columns) ──► Fail immediately (SchemaMismatchError)
-             │
-             ▼
-   [ Row-Level Checks ] ────── (Null ID / Empty Geom / Duplicate Conflict) ──► Rejected Log
-             │
-             ▼
-[ Geometry Repair & Normalization ] ──► shapely.make_valid -> MultiPolygon (EPSG:25832)
-             │
-             ▼
- [ Traceable Zone Lookup ] ──► config["zone_lookup"] (Unmapped -> "UNKNOWN")
-             │
-             ▼
- [ Idempotent PostGIS Upsert ] ──► iris_staging.water_protection_zones ON CONFLICT (state_code, source_zone_id)
-                                    (Skips unchanged records via IS DISTINCT FROM)
-                                    (Records run log to iris_staging.water_protection_runs)
-             │
-             ▼
-[ Parcel Screening Demo ] ──► Reads cached PostGIS zones -> Dissolves by class ->
-                              Exclusive priority overlay (I > II > IIIA > IIIB > III > UNKNOWN) ->
-                              Generates assessed GeoPackage (output/parcels_assessed.gpkg)
+[ Raw GeoJSON / WFS Input ]
+           │
+           ▼
+[ Schema Validation ] ───── (Missing required columns) ──► Stops with clear error
+           │
+           ▼
+[ Row Checks ] ────────── (Null ID / Empty Geom / Conflicting Dups) ──► Rejection Log
+           │
+           ▼
+[ Geometry Repair ] ─────► shapely.make_valid -> MultiPolygon (EPSG:25832)
+           │
+           ▼
+[ Traceable Zone Mapping ] ─► config lookup (Unmapped codes -> "UNKNOWN")
+           │
+           ▼
+[ PostGIS Upsert ] ──────► iris_staging.water_protection_zones
+                            (ON CONFLICT DO UPDATE, skips unchanged rows via IS DISTINCT FROM)
+           │
+           ▼
+[ Parcel Screening Demo ] ► Reads PostGIS zones -> Dissolves same classes ->
+                            Priority overlay (I > II > IIIA > IIIB > III > UNKNOWN) ->
+                            Outputs assessed GeoPackage (output/parcels_assessed.gpkg)
 ```
+
+Each class is evaluated in a seperate priority step so higher protection levels take precedence over lower ones.
 
 ---
 
-## 3. Provenance & Staging Data Contract
+## 3. Data Contract & Provenance
 
-- **Provenance Format**: Records ingested from test files carry `source_url = "fixture:<path>"` (e.g. `fixture:tests/fixtures/zones_input.geojson`). They never fabricate the live geoportal URL.
+- **Provenance**: Records loaded from fixtures are tagged with `source_url = "fixture:<path>"` (for example `fixture:tests/fixtures/zones_input.geojson`). They do not fake a live URL.
 - **Staging Table (`iris_staging.water_protection_zones`)**:
   - Key: `(state_code, source_zone_id)`
   - Target CRS: `EPSG:25832` (ETRS89 / UTM Zone 32N)
-  - `geom`: `GEOMETRY(MultiPolygon, 25832)` with GiST spatial index.
-  - Raw attributes: Complete unmodified input attributes preserved as `JSONB` in `source_attributes`.
-  - Flags: `geometry_repaired` (`bool`) flags any polygon that required topological repair.
-- **Run Log Table (`iris_staging.water_protection_runs`)**:
-  - Tracks `run_id`, timestamps, records input, accepted, rejected, inserted, updated, unchanged, and status.
+  - Geometry: `GEOMETRY(MultiPolygon, 25832)` with GiST spatial indexing.
+  - Raw attributes: Kept in full as JSONB in `source_attributes`.
+  - Repair flag: `geometry_repaired` (boolean) tracks if topological fixing took place.
+- **Run Tracking (`iris_staging.water_protection_runs`)**:
+  - Logs execution timestamps, input count, accepted count, rejected count, inserted, updated, and unchanged counts.
+  - Ensures clean auditability on the PostGIS persistance layer.
 
 ---
 
-## 4. Run Instructions
+## 4. How to Run
 
-### Prerequisites
-- Docker & Docker Compose
-- Python 3.11+ (Python 3.13 recommended)
+### Option A: Quickstart with Docker Compose (Recommended)
 
-### Quickstart with Docker Compose
-
-1. **Start PostGIS and Run Pipeline**:
+1. Set up environment:
    ```bash
-   # Copy environment config
    cp .env.example .env
-
-   # Bring up PostGIS and execute the pipeline container
+   ```
+2. Build and run the entire pipeline:
+   ```bash
    docker compose up --build
    ```
-   The `app` container will wait for `postgis` to report healthy, execute the complete fixture pipeline, and write the screened parcels to `output/parcels_assessed.gpkg`.
+   This starts PostGIS, waits for the healthcheck to pass, runs the ingestion pipeline and parcel screening demo in the `app` container, and outputs the result to `output/parcels_assessed.gpkg`.
 
-2. **Run PostGIS only (for local development & testing)**:
+3. To keep PostGIS running in the background for local development:
    ```bash
    docker compose up -d postgis
    ```
 
-### Local Python Environment
+### Option B: Local Python Environment
 
-1. **Create and activate venv**:
+1. Create a virtual environment and install requirements:
    ```bash
    python -m venv .venv
-   # Windows:
-   .venv\Scripts\activate
-   # Linux/macOS:
-   source .venv/bin/activate
-   ```
-
-2. **Install pinned dependencies**:
-   ```bash
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
    pip install -r requirements.txt
    ```
 
-3. **Run the Offline Pipeline CLI**:
+2. Run the offline pipeline:
    ```bash
    python src/cli.py --mode fixture
    ```
 
-4. **Run the Full Test Suite**:
+3. Run the automated test suite:
    ```bash
    pytest -v
    ```
@@ -113,14 +108,14 @@ A production-grade Python data ingestion and spatial screening module for Saxony
 
 ## 5. Parcel Screening Demo & Validation Query
 
-The parcel demo reads `tests/fixtures/parcels_input.gpkg`, queries PostGIS cached zones, and computes:
-- Exact area coverage in m² and percentage per zone class.
+The parcel assessment module reads `tests/fixtures/parcels_input.gpkg`, queries cached zones from PostGIS, and calculates:
+- Exact coverage area in m² and percentage per zone class.
 - `outside_m2` and `outside_pct`.
-- **Exclusive Priority**: Higher priority zones preempt lower ones (`ZONE_I > ZONE_II > ZONE_IIIA > ZONE_IIIB > ZONE_III > UNKNOWN`).
-- Tested invariants: $\sum \text{zone\_m2} + \text{outside\_m2} = \text{parcel\_area\_m2}$ (exact within float tolerance).
+- Priority attribution: higher-priority zones preempt lower ones (`ZONE_I > ZONE_II > ZONE_IIIA > ZONE_IIIB > ZONE_III > UNKNOWN`).
+- Area invariant: for every parcel, sum of zone areas + outside area equals total parcel area.
 
-To run the standalone PostGIS validation query:
+A standalone SQL validation query is provided in `sql/validation_query.sql`. You can execute it directly against PostGIS:
 ```bash
-# See sql/validation_query.sql and docs/example_result.md
 psql -h 127.0.0.1 -U iris -d iris_dev -f sql/validation_query.sql
 ```
+Sample query output is documented in `docs/example_result.md`.

@@ -1,12 +1,3 @@
-"""Integration tests for PostGIS Idempotent Loader (Step 3).
-
-Verifies against live PostGIS container:
-(a) Load fixture twice -> row count unchanged, 2nd run has rows_unchanged == 4.
-(b) Load modified copy -> only changed row is updated, count unchanged.
-(c) Rejected rows are never in the table; exact accepted vs rejected rows verified.
-(d) Every stored geometry is valid and has SRID 25832.
-(e) Run log table records execution metadata per run.
-"""
 
 import json
 from pathlib import Path

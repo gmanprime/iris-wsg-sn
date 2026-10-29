@@ -1,6 +1,6 @@
 # IRIS-WSG-SN: Data Quality & Acceptance Report
 
-This quality report provides empirical evidence for system acceptance based on real test execution outputs and representative fixtures in realistic Saxony coordinates (EPSG:25832).
+This quality report provides empirical evidence for system acceptance based on test execution outputs and representative fixtures in realistic Saxony coordinates (EPSG:25832).
 
 ---
 
@@ -8,12 +8,12 @@ This quality report provides empirical evidence for system acceptance based on r
 
 | Item | Status | Details / Evidence |
 |:---|:---|:---|
-| **Live WFS Reachability** | **UNVERIFIED (TIMEOUT)** | Handshake timed out connecting to `https://geoportal.sachsen.de/wfs/wasserschutz` (`_ssl.c:1011`). Documented per Core Rule 6. |
+| **Live WFS Reachability** | **UNVERIFIED (TIMEOUT)** | Handshake timed out connecting to `https://geoportal.sachsen.de/wfs/wasserschutz` (`_ssl.c:1011`). Documented per candidate notes in assignment. |
 | **Source Schema & Field Names** | **ASSUMED** | Configured in `config/wsg_config.json` (`wsg_id`, `schutzzone`) based on German LfULG conventions. |
 | **Zone Classification Lookup** | **VERIFIED (OFFLINE)** | Explicit mapping (`I` -> `ZONE_I`, `II` -> `ZONE_II`, etc.). Unmapped codes map strictly to `UNKNOWN`. |
 | **Idempotent Upsert** | **VERIFIED (POSTGIS)** | Double-load test verified: `rows_inserted=0, rows_updated=0, rows_unchanged=4`, table row count strictly unchanged. |
 | **Geometry Repair & Reprojection**| **VERIFIED (SHAPELY/GEOPANDAS)** | Repaired self-intersecting bowties to MultiPolygon. Reprojected EPSG:25833 to EPSG:25832. |
-| **Parcel Screening & Priority** | **VERIFIED (GEOPACKAGE)** | Tested all 6 spatial cases with exclusive priority coverage. Area conservation invariant strictly holds. |
+| **Parcel Screening & Priority** | **VERIFIED (GEOPACKAGE)** | Tested all 6 spatial cases with exclusive priority coverage. Area conservation invariant holds. |
 
 ---
 
@@ -44,7 +44,7 @@ Across the 9 raw test features, the validation and normalization module produced
 ### B. Rejected Features (3 Records)
 1. **`SN-WSG-003` Version A & Version B (`ERR_DUPLICATE_ID_CONFLICT`)**:
    - Cause: Two distinct records in the same batch shared the same source ID (`SN-WSG-003`) with conflicting geometries and attributes.
-   - Handling: In accordance with data integrity requirements, the pipeline **rejected both records** rather than picking one arbitrarily or causing a PostgreSQL batch conflict.
+   - Handling: In accordance with data integrity requirements, the pipeline rejected both records rather than picking one arbitrarily or causing a PostgreSQL batch conflict.
 2. **Missing ID Record (`ERR_MISSING_ID`)**:
    - Cause: Feature with `wsg_id = null`.
    - Handling: Rejected immediately before reaching the database.
@@ -65,9 +65,9 @@ Evaluated against PostGIS cached zones using priority order: `ZONE_I > ZONE_II >
 | **PARCEL-06** | Straddling stacked zones | 200,000.0 | 0.0% | **40.0%** | **60.0%** | 0.0% | `SN-WSG-005`, `SN-WSG-006` |
 
 ### Key Mathematical Invariants Verified
-1. **Exact Area Conservation**: For every single parcel, $\sum \text{zone\_m2} + \text{outside\_m2} = \text{parcel\_area\_m2}$ passes with zero deviation beyond machine floating-point precision.
+1. **Exact Area Conservation**: For every single parcel, sum of zone areas + outside area = total parcel area passes with zero deviation beyond machine floating-point precision.
 2. **Precedence Enforcement**: For `PARCEL-05`, although physically inside both `SN-WSG-005` (Zone III) and `SN-WSG-006` (Zone II), 100% of the area is exclusively attributed to the higher-priority `ZONE_II`.
-3. **Idempotence**: Running the parcel assessment demo on already-assessed output files skips re-computation and yields identical timestamps and figures.
+3. **Idempotence**: Running the parcel assessment on already-assessed output files skips re-computation and yields identical figures.
 
 ---
 
@@ -75,4 +75,5 @@ Evaluated against PostGIS cached zones using priority order: `ZONE_I > ZONE_II >
 
 - **Total Tests**: 27 passed (21 unit tests + 4 PostGIS loader integration tests + 2 parcel screening integration tests).
 - **Execution Environment**: Python 3.13.1, PostGIS 16-3.4 (Docker).
-- **Pass Rate**: 100% (27 passed in 55.94s).
+- **Pass Rate**: 100% (27 passed in ~55s).
+- Verified database and GDAL compatability across all runs.

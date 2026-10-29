@@ -1,28 +1,12 @@
-"""Parcel Protection Zone Screening & Assessment Module (Step 4).
-
-Reads cached protection zones from PostGIS table `iris_staging.water_protection_zones`.
-Reads input parcels GeoPackage with empty zone metrics.
-Performs spatial overlay in EPSG:25832:
-- Dissolves same-class zones first.
-- Applies EXCLUSIVE coverage by priority order:
-    ZONE_I > ZONE_II > ZONE_IIIA > ZONE_IIIB > ZONE_III > UNKNOWN
-  Each area of a parcel is counted ONLY for the highest-priority zone covering it.
-- Computes exact raw m² and % per zone class and outside_m2 / outside_pct.
-- Identifies intersecting zone IDs and whether any repaired zone was involved.
-- Skips parcels already assessed (idempotent demo execution).
-- Writes updated parcels to an output GeoPackage.
-"""
-
 from __future__ import annotations
 
 import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import geopandas as gpd
 import pandas as pd
 import shapely
-from shapely.geometry import MultiPolygon, Polygon
 from sqlalchemy.engine import Engine
 
 from src.load.loader import get_engine
@@ -39,7 +23,6 @@ DEFAULT_PRIORITY_ORDER = [
 
 
 def load_zones_from_postgis(engine: Engine, table: str = "iris_staging.water_protection_zones") -> gpd.GeoDataFrame:
-    """Fetch stored protection zones from PostGIS."""
     sql = f"""
     SELECT 
         source_zone_id,
@@ -63,20 +46,9 @@ def assess_parcels(
     zones_gdf: gpd.GeoDataFrame,
     config: Dict[str, Any],
 ) -> gpd.GeoDataFrame:
-    """Assess parcels against protection zones with exclusive priority coverage.
-
-    Args:
-        parcels_gdf: Input parcels GeoDataFrame
-        zones_gdf: Protection zones GeoDataFrame (from PostGIS)
-        config: Pipeline configuration dictionary
-
-    Returns:
-        Updated GeoDataFrame with zone coverage metrics filled.
-    """
     target_crs = config.get("target_crs", "EPSG:25832")
     priority_order = config.get("priority_order", DEFAULT_PRIORITY_ORDER)
 
-    # Ensure CRS alignment
     if parcels_gdf.crs is None:
         parcels_gdf.set_crs(target_crs, inplace=True)
     elif parcels_gdf.crs.to_epsg() != 25832:
@@ -87,16 +59,13 @@ def assess_parcels(
     elif zones_gdf.crs.to_epsg() != 25832:
         zones_gdf = zones_gdf.to_crs(target_crs)
 
-    # Dissolve same-class zones first
     dissolved_by_class: Dict[str, Any] = {}
     for zone_class, group in zones_gdf.groupby("zone_class"):
         dissolved_by_class[zone_class] = shapely.union_all(group.geometry.tolist())
 
-    # Build list of metric columns from config priority order
     class_cols_m2 = [f"{cls.lower()}_m2" for cls in priority_order]
     class_cols_pct = [f"{cls.lower()}_pct" for cls in priority_order]
 
-    # Ensure result columns exist
     result_gdf = parcels_gdf.copy()
     for col in ["parcel_area_m2", *class_cols_m2, "outside_m2", *class_cols_pct, "outside_pct", "zone_source_ids", "geometry_repaired_zone_involved", "assessed_at"]:
         if col not in result_gdf.columns:
@@ -105,7 +74,6 @@ def assess_parcels(
     now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
     for idx, row in result_gdf.iterrows():
-        # Check if parcel is already assessed (skip if already has area assigned)
         existing_area = row.get("parcel_area_m2")
         if pd.notna(existing_area) and float(existing_area) > 0 and pd.notna(row.get("assessed_at")):
             continue
@@ -117,11 +85,9 @@ def assess_parcels(
         parcel_area = float(parcel_geom.area)
         result_gdf.at[idx, "parcel_area_m2"] = parcel_area
 
-        # Find intersecting zones (touching or overlapping)
         intersecting_mask = zones_gdf.intersects(parcel_geom)
         intersecting_zones = zones_gdf[intersecting_mask]
 
-        # Only list source IDs that have non-zero area or touch
         intersecting_ids: List[str] = []
         repaired_involved = False
 
@@ -135,7 +101,6 @@ def assess_parcels(
         result_gdf.at[idx, "zone_source_ids"] = ",".join(sorted(intersecting_ids))
         result_gdf.at[idx, "geometry_repaired_zone_involved"] = repaired_involved
 
-        # EXCLUSIVE coverage by priority order
         covered_so_far = None
         total_covered_area = 0.0
 
@@ -160,48 +125,45 @@ def assess_parcels(
             else:
                 area_c = 0.0
 
-            pct_c = (area_c / parcel_area) * 100.0 if parcel_area > 0 else 0.0
-            result_gdf.at[idx, col_m2] = area_c
-            result_gdf.at[idx, col_pct] = pct_c
+            pct_c = (area_c / parcel_area * 100.0) if parcel_area > 0 else 0.0
             total_covered_area += area_c
 
+            result_gdf.at[idx, col_m2] = area_c
+            result_gdf.at[idx, col_pct] = pct_c
+
         outside_m2 = max(0.0, parcel_area - total_covered_area)
-        outside_pct = (outside_m2 / parcel_area) * 100.0 if parcel_area > 0 else 0.0
+        outside_pct = (outside_m2 / parcel_area * 100.0) if parcel_area > 0 else 0.0
 
         result_gdf.at[idx, "outside_m2"] = outside_m2
         result_gdf.at[idx, "outside_pct"] = outside_pct
         result_gdf.at[idx, "assessed_at"] = now_iso
 
-    # Explicitly cast numeric columns to float64
     numeric_cols = ["parcel_area_m2", *class_cols_m2, "outside_m2", *class_cols_pct, "outside_pct"]
     for col in numeric_cols:
-        result_gdf[col] = pd.to_numeric(result_gdf[col], errors="coerce").fillna(0.0).astype(float)
+        result_gdf[col] = pd.to_numeric(result_gdf[col], errors="coerce").astype("float64")
 
     return result_gdf
 
 
 def run_parcel_demo(
-    parcels_input_path: Path | str,
-    output_gpkg_path: Path | str,
+    parcels_input_path: Path | str = "tests/fixtures/parcels_input.gpkg",
+    output_gpkg_path: Path | str = "output/parcels_assessed.gpkg",
     config_path: Path | str = "config/wsg_config.json",
     engine: Optional[Engine] = None,
 ) -> gpd.GeoDataFrame:
-    """Run end-to-end parcel screening demo from PostGIS cached zones."""
-    eng = engine or get_engine()
-    cfg = load_config(config_path)
+    config = load_config(config_path)
+    db_engine = engine or get_engine()
 
-    # 1. Read cached zones from PostGIS
-    zones_gdf = load_zones_from_postgis(eng)
+    parcels_path = Path(parcels_input_path)
+    if not parcels_path.exists():
+        raise FileNotFoundError(f"Input parcels file not found: {parcels_path}")
 
-    # 2. Read input parcels GeoPackage
-    parcels_gdf = gpd.read_file(parcels_input_path)
+    input_parcels = gpd.read_file(parcels_path)
+    zones_gdf = load_zones_from_postgis(db_engine)
 
-    # 3. Assess parcels
-    assessed_gdf = assess_parcels(parcels_gdf, zones_gdf, cfg)
+    assessed = assess_parcels(input_parcels, zones_gdf, config)
 
-    # 4. Write output GeoPackage
-    out_path = Path(output_gpkg_path)
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    assessed_gdf.to_file(out_path, driver="GPKG", layer="parcels")
-
-    return assessed_gdf
+    out_file = Path(output_gpkg_path)
+    out_file.parent.mkdir(parents=True, exist_ok=True)
+    assessed.to_file(out_file, driver="GPKG", layer="assessed_parcels")
+    return assessed

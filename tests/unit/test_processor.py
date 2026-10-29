@@ -1,4 +1,3 @@
-"""Unit tests for Water Protection Zones Processing Module (Step 2)."""
 
 import json
 from pathlib import Path

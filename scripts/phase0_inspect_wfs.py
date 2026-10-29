@@ -1,8 +1,8 @@
-"""Phase 0: Standalone read-only WFS inspection script for IRIS-WSG-SN.
+"""Standalone read-only WFS inspection script.
 
-Queries GetCapabilities, DescribeFeatureType, and GetFeature (sample of ~10 features).
+Queries GetCapabilities, DescribeFeatureType, and GetFeature.
 Saves raw responses to raw_responses/ and prints structured inspection details.
-Uses only Python standard library so it runs in any standard Python 3.10+ environment.
+Uses only Python standard library.
 """
 
 import json

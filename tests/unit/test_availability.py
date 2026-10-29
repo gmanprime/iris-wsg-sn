@@ -1,7 +1,3 @@
-"""Unit tests for WFS Service Availability and Fetch (Step 2).
-
-All tests use strictly MOCKED HTTP responses. Never contacts live servers.
-"""
 
 import io
 import json

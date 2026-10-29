@@ -1,4 +1,3 @@
-"""Unit tests verifying Step 1 hand-made fixtures."""
 
 import json
 from pathlib import Path

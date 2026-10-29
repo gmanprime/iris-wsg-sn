@@ -1,15 +1,9 @@
-"""Command Line Interface for IRIS-WSG-SN Pipeline.
-
-Supports:
-- --mode fixture: Runs complete offline pipeline (process -> load -> parcel demo)
-  using hand-made test fixtures and PostGIS staging database.
-"""
+from __future__ import annotations
 
 import argparse
 import sys
 from pathlib import Path
 
-# Ensure project root is in sys.path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
@@ -31,7 +25,6 @@ def run_fixture_mode(
     print("=== IRIS-WSG-SN Pipeline: Offline Fixture Demonstrator Mode   ===")
     print("=================================================================")
 
-    # 1. Load config
     cfg_file = Path(config_path)
     if not cfg_file.exists():
         print(f"[ERROR] Config file not found: {cfg_file}", file=sys.stderr)
@@ -39,7 +32,6 @@ def run_fixture_mode(
     config = load_config(cfg_file)
     print(f"[1/4] Loaded configuration from {cfg_file}")
 
-    # 2. Database initialization
     print("[2/4] Connecting to PostGIS and ensuring schema exists...")
     try:
         engine = get_engine()
@@ -48,7 +40,6 @@ def run_fixture_mode(
         print(f"[ERROR] Database connection failed: {e}", file=sys.stderr)
         return 1
 
-    # 3. Process & Validate zones
     print(f"[3/4] Processing zones from fixture: {zones_fixture} ...")
     zones_path = Path(zones_fixture)
     if not zones_path.exists():
@@ -66,7 +57,6 @@ def run_fixture_mode(
     if proc_result.stats.rejection_breakdown:
         print(f"      - Rejection breakdown: {proc_result.stats.rejection_breakdown}")
 
-    # 4. Upsert into PostGIS
     load_summary = upsert_zones(
         engine,
         proc_result.accepted,
@@ -77,7 +67,6 @@ def run_fixture_mode(
     print(f"      - PostGIS loaded:      {load_summary.rows_inserted} inserted, {load_summary.rows_updated} updated, {load_summary.rows_unchanged} unchanged")
     print(f"      - Staging table total: {load_summary.total_table_rows} rows")
 
-    # 5. Run Parcel Assessment Demo
     print(f"[4/4] Running parcel screening demo on {parcels_fixture} ...")
     parcels_path = Path(parcels_fixture)
     if not parcels_path.exists():
@@ -98,7 +87,7 @@ def run_fixture_mode(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="IRIS-WSG-SN Ingestion Pipeline")
+    parser = argparse.ArgumentParser(description="IRIS-WSG-SN Water Protection Zone Pipeline")
     parser.add_argument(
         "--mode",
         choices=["fixture"],
@@ -108,34 +97,37 @@ def main():
     parser.add_argument(
         "--config",
         default="config/wsg_config.json",
-        help="Path to configuration file",
+        help="Path to pipeline JSON configuration file",
     )
     parser.add_argument(
-        "--zones",
+        "--zones-fixture",
         default="tests/fixtures/zones_input.geojson",
-        help="Path to zones input fixture",
+        help="Path to zones fixture file",
     )
     parser.add_argument(
-        "--parcels",
+        "--parcels-fixture",
         default="tests/fixtures/parcels_input.gpkg",
         help="Path to parcels input GeoPackage",
     )
     parser.add_argument(
-        "--output",
+        "--output-parcels",
         default="output/parcels_assessed.gpkg",
-        help="Path to write assessed parcels GeoPackage",
+        help="Path to output assessed parcels GeoPackage",
     )
 
     args = parser.parse_args()
+
     if args.mode == "fixture":
-        sys.exit(
-            run_fixture_mode(
-                config_path=args.config,
-                zones_fixture=args.zones,
-                parcels_fixture=args.parcels,
-                output_parcels=args.output,
-            )
+        exit_code = run_fixture_mode(
+            config_path=args.config,
+            zones_fixture=args.zones_fixture,
+            parcels_fixture=args.parcels_fixture,
+            output_parcels=args.output_parcels,
         )
+        sys.exit(exit_code)
+    else:
+        print(f"[ERROR] Unsupported mode: {args.mode}", file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

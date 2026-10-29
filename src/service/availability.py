@@ -1,11 +1,3 @@
-"""WFS Service Availability and Fetch Module (Step 2).
-
-Provides:
-- check_availability(): Tests service health, returning status (UP, DEGRADED, DOWN)
-  and reason (timeout, connection/TLS error, HTTP 4xx/5xx, ExceptionReport inside 200, layer missing).
-- fetch_zones(): Refuses to fetch unless service availability is UP.
-"""
-
 from __future__ import annotations
 
 import io
@@ -22,7 +14,7 @@ import geopandas as gpd
 
 @dataclass
 class ServiceStatus:
-    status: str  # "UP", "DEGRADED", "DOWN"
+    status: str
     reason: str
     details: Optional[str] = None
 
@@ -41,11 +33,6 @@ def check_availability(
     timeout: int = 10,
     http_client=None,
 ) -> ServiceStatus:
-    """Check health and layer availability of a WFS service.
-
-    Returns:
-        ServiceStatus with status in ("UP", "DEGRADED", "DOWN") and explicit reason.
-    """
     cap_url = f"{endpoint_url.rstrip('?')}?SERVICE=WFS&REQUEST=GetCapabilities"
     client = http_client or urllib.request.urlopen
 
@@ -75,13 +62,11 @@ def check_availability(
             return ServiceStatus(status="DOWN", reason="timeout", details=str(ex))
         return ServiceStatus(status="DOWN", reason="connection/TLS error", details=str(ex))
 
-    # Parse XML response
     try:
         root = ET.fromstring(content)
     except ET.ParseError as pe:
         return ServiceStatus(status="DEGRADED", reason="Invalid XML response", details=str(pe))
 
-    # Check for OWS / WFS ExceptionReport inside HTTP 200
     root_tag = _strip_ns(root.tag).lower()
     if "exception" in root_tag:
         text_elems = [el.text.strip() for el in root.iter() if el.text and el.text.strip()]
@@ -92,7 +77,6 @@ def check_availability(
             details=exc_summary or "OWS ExceptionReport returned",
         )
 
-    # Search for layer_name in FeatureTypeList
     layers_found = []
     for elem in root.iter():
         if _strip_ns(elem.tag) == "FeatureType":
@@ -117,7 +101,6 @@ def fetch_zones(
     http_client=None,
     count: Optional[int] = None,
 ) -> gpd.GeoDataFrame:
-    """Fetch protection zones from WFS. Refuses to fetch unless availability is UP."""
     status = check_availability(
         endpoint_url=endpoint_url,
         layer_name=layer_name,
@@ -130,7 +113,6 @@ def fetch_zones(
             f"Cannot fetch zones: WFS service is {status.status} ({status.reason}). Details: {status.details}"
         )
 
-    # Request GeoJSON feature collection
     count_clause = f"&COUNT={count}" if count else ""
     feat_url = f"{endpoint_url.rstrip('?')}?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&typeNames={layer_name}&OUTPUTFORMAT=application/json{count_clause}"
 

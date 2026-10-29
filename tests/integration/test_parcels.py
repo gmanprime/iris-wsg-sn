@@ -1,11 +1,3 @@
-"""Integration tests for Parcel Screening and Assessment (Step 4).
-
-Verifies:
-- All 6 parcel cases (inside one zone, outside, straddling, edge-touch only, inside stacked zones, straddling stacked zones).
-- Exclusive coverage by priority order (ZONE_I > ZONE_II > ZONE_IIIA > ZONE_IIIB > ZONE_III > UNKNOWN).
-- For every parcel: sum(class_m2) + outside_m2 == parcel_area_m2.
-- Running the demo twice gives the same output (idempotence).
-"""
 
 from pathlib import Path
 import geopandas as gpd

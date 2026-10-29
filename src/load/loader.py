@@ -1,14 +1,3 @@
-"""PostGIS Idempotent Loader for Water Protection Zones (Step 3).
-
-Loads validated and normalized GeoDataFrame records into:
-  iris_staging.water_protection_zones
-
-Keyed on (state_code, source_zone_id) using PostgreSQL UPSERT.
-Skips updating rows where attributes and geometry are unchanged (IS DISTINCT FROM).
-Records pipeline execution run metadata into:
-  iris_staging.water_protection_runs
-"""
-
 from __future__ import annotations
 
 import datetime
@@ -16,7 +5,7 @@ import os
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Optional
 
 import geopandas as gpd
 from sqlalchemy import create_engine, text
@@ -34,7 +23,6 @@ class LoadSummary:
 
 
 def get_db_url() -> str:
-    """Retrieve database URL from environment variables."""
     url = os.getenv("DATABASE_URL")
     if url:
         if url.startswith("postgresql://"):
@@ -49,12 +37,10 @@ def get_db_url() -> str:
 
 
 def get_engine(db_url: Optional[str] = None) -> Engine:
-    """Create SQLAlchemy engine."""
     return create_engine(db_url or get_db_url(), echo=False)
 
 
 def init_db(engine: Engine, sql_path: Optional[Path | str] = None) -> None:
-    """Initialize schema and tables if they do not exist."""
     path = Path(sql_path or (Path(__file__).parent.parent.parent / "sql" / "init_schema.sql"))
     if not path.exists():
         raise FileNotFoundError(f"Schema SQL file not found: {path}")
@@ -65,7 +51,6 @@ def init_db(engine: Engine, sql_path: Optional[Path | str] = None) -> None:
             cleaned = stmt.strip()
             if cleaned:
                 conn.execute(text(cleaned))
-        # Ensure new column exists on already-created tables
         conn.execute(text("ALTER TABLE iris_staging.water_protection_runs ADD COLUMN IF NOT EXISTS records_unchanged INT DEFAULT 0;"))
 
 
@@ -77,11 +62,6 @@ def upsert_zones(
     records_input: int = 0,
     records_rejected: int = 0,
 ) -> LoadSummary:
-    """Idempotently upsert accepted protection zone records into PostGIS.
-
-    Skips unchanged rows using IS DISTINCT FROM.
-    Records execution metadata into iris_staging.water_protection_runs.
-    """
     active_run_id = str(run_id or uuid.uuid4())
     started_at = datetime.datetime.now(datetime.timezone.utc)
 
@@ -172,7 +152,6 @@ def upsert_zones(
             }
             res = conn.execute(upsert_sql, params).fetchone()
             if res is None:
-                # WHERE condition was false -> row was unchanged and skipped
                 unchanged += 1
             elif res[0] is True:
                 inserted += 1
@@ -183,7 +162,6 @@ def upsert_zones(
             text("SELECT COUNT(*) FROM iris_staging.water_protection_zones")
         ).scalar() or 0
 
-        # Record run log entry
         conn.execute(
             text("""
             INSERT INTO iris_staging.water_protection_runs (
