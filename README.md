@@ -119,3 +119,11 @@ A standalone SQL validation query is provided in `sql/validation_query.sql`. You
 psql -h 127.0.0.1 -U iris -d iris_dev -f sql/validation_query.sql
 ```
 Sample query output is documented in `docs/example_result.md`.
+
+---
+
+## 6. License
+
+This repository is licensed under the [PolyForm Noncommercial License 1.0.0](LICENSE).
+Permission is granted for inspection, testing, and candidate evaluation. Any commercial deployment, production use, or integration into business operations requires an explicit commercial agreement with the author.
+
