@@ -1,0 +1,10 @@
+.venv
+.venv_fresh
+.git
+.pytest_cache
+__pycache__
+*.pyc
+*.pyo
+raw_responses
+output
+.env

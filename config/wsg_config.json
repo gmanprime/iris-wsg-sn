@@ -1,0 +1,36 @@
+{
+  "_comment": "Assumed schema configuration because live Saxony WFS timed out. All field names and lookup values are configurable.",
+  "layer_name": "sn_wsg_bestand",
+  "source_crs": "EPSG:25832",
+  "target_crs": "EPSG:25832",
+  "id_column": {
+    "name": "wsg_id",
+    "assumed": true,
+    "description": "Unique identifier for water protection zone"
+  },
+  "zone_column": {
+    "name": "schutzzone",
+    "assumed": true,
+    "description": "Protection zone code (e.g., I, II, III, IIIA, IIIB)"
+  },
+  "zone_lookup": {
+    "I": "ZONE_I",
+    "II": "ZONE_II",
+    "III": "ZONE_III",
+    "IIIA": "ZONE_IIIA",
+    "IIIB": "ZONE_IIIB"
+  },
+  "required_columns": [
+    "wsg_id",
+    "schutzzone"
+  ],
+  "default_state_code": "SN",
+  "priority_order": [
+    "ZONE_I",
+    "ZONE_II",
+    "ZONE_IIIA",
+    "ZONE_IIIB",
+    "ZONE_III",
+    "UNKNOWN"
+  ]
+}

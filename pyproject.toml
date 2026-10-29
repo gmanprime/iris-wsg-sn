@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "iris-wsg-sn"
+version = "0.1.0"
+description = "Saxony Drinking Water Protection (LfULG) WFS Ingestion Pipeline"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "geopandas>=1.0.0",
+    "shapely>=2.0.0",
+    "pyproj>=3.6.0",
+    "pyogrio>=0.8.0",
+    "sqlalchemy>=2.0.0",
+    "geoalchemy2>=0.14.0",
+    "psycopg2-binary>=2.9.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+pythonpath = ["."]

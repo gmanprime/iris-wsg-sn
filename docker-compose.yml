@@ -1,0 +1,35 @@
+services:
+  postgis:
+    image: postgis/postgis:16-3.4
+    container_name: iris_postgis
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-iris}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-iris_dev_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-iris_dev}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - ./sql/init_schema.sql:/docker-entrypoint-initdb.d/01_init_schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-iris} -d ${POSTGRES_DB:-iris_dev}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  app:
+    build: .
+    container_name: iris_pipeline_app
+    depends_on:
+      postgis:
+        condition: service_healthy
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-iris}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-iris_dev_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-iris_dev}
+      POSTGRES_HOST: postgis
+      POSTGRES_PORT: 5432
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-iris}:${POSTGRES_PASSWORD:-iris_dev_pass}@postgis:5432/${POSTGRES_DB:-iris_dev}
+    volumes:
+      - ./output:/app/output
+    command: ["python", "src/cli.py", "--mode", "fixture"]

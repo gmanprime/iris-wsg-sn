@@ -1,0 +1,370 @@
+{
+  "type": "FeatureCollection",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::25832"
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "wsg_id": "SN-WSG-001",
+        "schutzzone": "IIIA",
+        "wsg_name": "WSG Dresden Nordost (Multipart)",
+        "rechtsstand": "festgesetzt",
+        "festsetzungsdatum": "2018-05-12"
+      },
+      "geometry": {
+        "type": "MultiPolygon",
+        "coordinates": [
+          [
+            [
+              [
+                830000.0,
+                5650000.0
+              ],
+              [
+                831000.0,
+                5650000.0
+              ],
+              [
+                831000.0,
+                5651000.0
+              ],
+              [
+                830000.0,
+                5651000.0
+              ],
+              [
+                830000.0,
+                5650000.0
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                831200.0,
+                5650000.0
+              ],
+              [
+                832000.0,
+                5650000.0
+              ],
+              [
+                832000.0,
+                5650800.0
+              ],
+              [
+                831200.0,
+                5650800.0
+              ],
+              [
+                831200.0,
+                5650000.0
+              ]
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "wsg_id": "SN-WSG-002",
+        "schutzzone": "II",
+        "wsg_name": "WSG Radebeul (Self-Intersecting)",
+        "rechtsstand": "im Verfahren",
+        "festsetzungsdatum": "2020-01-15"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              832500.0,
+              5650000.0
+            ],
+            [
+              833500.0,
+              5651000.0
+            ],
+            [
+              832500.0,
+              5651000.0
+            ],
+            [
+              833500.0,
+              5650000.0
+            ],
+            [
+              832500.0,
+              5650000.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "wsg_id": "SN-WSG-003",
+        "schutzzone": "III",
+        "wsg_name": "WSG Pirna Version A",
+        "rechtsstand": "festgesetzt",
+        "festsetzungsdatum": "2015-11-01"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              834000.0,
+              5650000.0
+            ],
+            [
+              835000.0,
+              5650000.0
+            ],
+            [
+              835000.0,
+              5651000.0
+            ],
+            [
+              834000.0,
+              5651000.0
+            ],
+            [
+              834000.0,
+              5650000.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "wsg_id": "SN-WSG-003",
+        "schutzzone": "III",
+        "wsg_name": "WSG Pirna Version B",
+        "rechtsstand": "festgesetzt",
+        "festsetzungsdatum": "2019-03-20"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              834000.0,
+              5650000.0
+            ],
+            [
+              835100.0,
+              5650000.0
+            ],
+            [
+              835100.0,
+              5651000.0
+            ],
+            [
+              834000.0,
+              5651000.0
+            ],
+            [
+              834000.0,
+              5650000.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "wsg_id": "SN-WSG-004",
+        "schutzzone": "IV_HISTORIC",
+        "wsg_name": "WSG Meissen Alter Bestand",
+        "rechtsstand": "vorlaeufig",
+        "festsetzungsdatum": "1998-07-04"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              836000.0,
+              5650000.0
+            ],
+            [
+              837000.0,
+              5650000.0
+            ],
+            [
+              837000.0,
+              5651000.0
+            ],
+            [
+              836000.0,
+              5651000.0
+            ],
+            [
+              836000.0,
+              5650000.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "wsg_id": null,
+        "schutzzone": "I",
+        "wsg_name": "WSG Ohne Kennung",
+        "rechtsstand": "unbekannt",
+        "festsetzungsdatum": "2021-09-10"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              838000.0,
+              5650000.0
+            ],
+            [
+              839000.0,
+              5650000.0
+            ],
+            [
+              839000.0,
+              5651000.0
+            ],
+            [
+              838000.0,
+              5651000.0
+            ],
+            [
+              838000.0,
+              5650000.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "wsg_id": "SN-WSG-005",
+        "schutzzone": "III",
+        "wsg_name": "WSG Coschuetz Outer (Zone III)",
+        "rechtsstand": "festgesetzt",
+        "festsetzungsdatum": "2016-04-18"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              830000.0,
+              5653000.0
+            ],
+            [
+              834000.0,
+              5653000.0
+            ],
+            [
+              834000.0,
+              5657000.0
+            ],
+            [
+              830000.0,
+              5657000.0
+            ],
+            [
+              830000.0,
+              5653000.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "wsg_id": "SN-WSG-006",
+        "schutzzone": "II",
+        "wsg_name": "WSG Coschuetz Inner (Zone II)",
+        "rechtsstand": "festgesetzt",
+        "festsetzungsdatum": "2016-04-18"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              831500.0,
+              5654500.0
+            ],
+            [
+              832500.0,
+              5654500.0
+            ],
+            [
+              832500.0,
+              5655500.0
+            ],
+            [
+              831500.0,
+              5655500.0
+            ],
+            [
+              831500.0,
+              5654500.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "wsg_id": "SN-WSG-007",
+        "schutzzone": "I",
+        "wsg_name": "WSG Coschuetz Fassungsbereich (Zone I)",
+        "rechtsstand": "festgesetzt",
+        "festsetzungsdatum": "2016-04-18"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              835000.0,
+              5654000.0
+            ],
+            [
+              836000.0,
+              5654000.0
+            ],
+            [
+              836000.0,
+              5655000.0
+            ],
+            [
+              835000.0,
+              5655000.0
+            ],
+            [
+              835000.0,
+              5654000.0
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}
